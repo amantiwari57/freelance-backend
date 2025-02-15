@@ -17,17 +17,17 @@ export interface IUser extends Document {
 const UserSchema = new Schema<IUser>(
   {
     email: { type: String, required: true, unique: true },
-    password: { type: String, required: true },
+    password: { type: String, required: false },
     firstName: { type: String, required: true },
     lastName: { type: String, required: true },
     userType: {
       type: String,
       enum: [ "freelancer", "client"],
-      required: true,
+      required: false,
     },
-    country: { type: String, required: true },
+    country: { type: String, required: false },
     image: { type: String, required: false },
-    termsandconditions: { type: Boolean, required: true },
+    termsandconditions: { type: Boolean, required: false },
     isAdmin:{type:Boolean, required:true, default:false},
   },
   { timestamps: true } // ✅ Adds `createdAt` and `updatedAt`
