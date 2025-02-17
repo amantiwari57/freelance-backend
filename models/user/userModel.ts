@@ -11,7 +11,9 @@ export interface IUser extends Document {
   termsandconditions: boolean;
   createdAt: Date;
   updatedAt: Date;
-  isAdmin:boolean
+  isAdmin:boolean,
+  resetToken?: string; // 🔹 Reset token for password reset
+  resetTokenExpiry?: number; // 🔹 Expiry timestamp for the reset token
 }
 
 const UserSchema = new Schema<IUser>(
@@ -29,6 +31,8 @@ const UserSchema = new Schema<IUser>(
     image: { type: String, required: false },
     termsandconditions: { type: Boolean, required: false },
     isAdmin:{type:Boolean, required:true, default:false},
+    resetToken: { type: String, required: false },
+    resetTokenExpiry: { type: Number, required: false },
   },
   { timestamps: true } // ✅ Adds `createdAt` and `updatedAt`
 );
