@@ -6,6 +6,7 @@ import googleAuth from './auth/googleAuth'
 import test from './test/test'
 import forgotPassword from './auth/forgot-password'
 import profile from './profile/profile'
+import upload from './test/upload-test'
 const app = new Hono()
 
 connectDB()
@@ -15,6 +16,7 @@ app.route('/',googleAuth)
 app.route('/',test)
 app.route('/',forgotPassword)
 app.route('/',profile)
+app.route('/',upload)
 app.get('/', (c) => {
  
   return c.text('Hello Hono!')
