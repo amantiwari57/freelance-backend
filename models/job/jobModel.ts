@@ -11,6 +11,7 @@ export interface IJob extends Document {
   expertiseLevel: "entry" | "intermediate" | "expert";
   paymentType: "fixed" | "hourly";
   price?: number; // Only for fixed payments
+  isOpen: boolean;
   pricePerHour?: { min: number; max: number }; // Only for hourly payments
   files: string[];
   createdAt?: Date;
@@ -39,6 +40,7 @@ const JobSchema: Schema = new Schema<IJob>(
       enum: ["entry", "intermediate", "expert"],
       required: true,
     },
+    isOpen: { type: Boolean, required: true },
     paymentType: { type: String, enum: ["fixed", "hourly"], required: true },
     price: {
       type: Number,
