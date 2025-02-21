@@ -3,9 +3,32 @@ import Job from "../../models/job/jobModel";
 import { verifyToken } from "../../helper/JwtHelpers/verifyToken";
 import jobSchema from "./jobTypes";
 import User from "../../models/user/userModel";
-import uploadFileToS3 from "../../helper/s3Uploads/s3Upload";
+import JobStats from "../../models/jobStats/jobStatsModel";
 
 const jobRouter = new Hono();
+
+const updateJobStats = async (userId: string) => {
+  let jobStats = await JobStats.findOne({ userId });
+  if (!jobStats) {
+      jobStats = new JobStats({
+          userId,
+          totalJobs: 1,
+          hireRate: 0,
+          openJobs: 1,
+          totalSpent: "$0",
+          hires: 0,
+          activeJobs: 0,
+          avgHourlyRate: 0,
+          totalHours: 0
+      });
+  } else {
+      jobStats.totalJobs += 1;
+      jobStats.openJobs += 1;
+      jobStats.hireRate = jobStats.totalJobs > 0 ? (jobStats.hires / jobStats.totalJobs) * 100 : 0;
+      jobStats.totalSpent = `$${(jobStats.hires * jobStats.avgHourlyRate * jobStats.totalHours).toFixed(2)}`;
+  }
+  await jobStats.save();
+};
 
 // Create Job
 jobRouter.post("/jobs", async (c) => {
@@ -17,24 +40,32 @@ jobRouter.post("/jobs", async (c) => {
         { status: 401 }
       );
     }
+
     const token = authHeader.split(" ")[1];
     const tokenVerification = await verifyToken(token);
     if (tokenVerification.error) {
       return c.json({ error: tokenVerification.error }, { status: 401 });
     }
-    const { id: userId } = tokenVerification.decoded!;
 
+    const { id: userId } = tokenVerification.decoded!;
     const user = await User.findById(userId);
     if (!user) {
-      return c.json({ error: "User not found" }, 404);
+      return c.json({ error: "User not found" }, { status: 404 });
     }
 
     const body = await c.req.json();
     const parsedBody = jobSchema.parse(body);
-    
 
-    const newJob = new Job({ userId, userType: user.userType, ...parsedBody });
+    const newJob = new Job({
+      userId,
+      userType: user.userType,
+      isOpen: true,
+      ...parsedBody,
+    });
     await newJob.save();
+
+    // Update totalJobs in JobStats
+    await updateJobStats(userId);
 
     return c.json(
       { message: "Job created successfully", job: newJob },

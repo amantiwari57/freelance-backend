@@ -8,6 +8,7 @@ import forgotPassword from './auth/forgot-password'
 import profile from './profile/profile'
 import upload from './upload/upload'
 import jobRouter from './jobs/jobs'
+import clientProfile from './client/clientProfile'
 const app = new Hono()
 
 connectDB()
@@ -19,6 +20,7 @@ app.route('/',forgotPassword)
 app.route('/',profile)
 app.route('/',upload)
 app.route('/',jobRouter)
+app.route('/', clientProfile)
 app.get('/', (c) => {
  
   return c.text('Hello Hono!')
