@@ -1,7 +1,7 @@
-import mongoose, { Schema, Document } from "mongoose";
+import mongoose, { Schema, Document, Types } from "mongoose";
 
 export interface IJob extends Document {
-  userId: mongoose.Types.ObjectId;
+  userId: Types.ObjectId;
   userType: "client";
   jobTitle: string;
   description: string;
@@ -10,9 +10,11 @@ export interface IJob extends Document {
   totalTime: "1 month" | "3 months" | "6monthsormore";
   expertiseLevel: "entry" | "intermediate" | "expert";
   paymentType: "fixed" | "hourly";
+  fixedPaymentType?: "milestone" | "project"; // New field
   price?: number; // Only for fixed payments
   isOpen: boolean;
   pricePerHour?: { min: number; max: number }; // Only for hourly payments
+  milestones?: Types.ObjectId[];
   files: string[];
   createdAt?: Date;
   updatedAt?: Date;
@@ -42,6 +44,13 @@ const JobSchema: Schema = new Schema<IJob>(
     },
     isOpen: { type: Boolean, required: true },
     paymentType: { type: String, enum: ["fixed", "hourly"], required: true },
+    fixedPaymentType: {
+      type: String,
+      enum: ["milestone", "project"],
+      required: function () {
+        return this.paymentType === "fixed";
+      },
+    }, // New field to specify how fixed payments are structured
     price: {
       type: Number,
       required: function () {
@@ -63,6 +72,7 @@ const JobSchema: Schema = new Schema<IJob>(
       },
     },
     files: { type: [String], default: [] },
+    milestones: [{ type: Schema.Types.ObjectId, ref: "JobMilestone", default: [] }],
   },
   { timestamps: true }
 );
