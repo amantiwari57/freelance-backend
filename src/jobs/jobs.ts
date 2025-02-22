@@ -88,18 +88,20 @@ jobRouter.get("/jobs", async (c) => {
     return c.json({ error: "Failed to fetch jobs" }, { status: 500 });
   }
 });
-
 // Get Job by ID
 jobRouter.get("/jobs/:id", async (c) => {
   try {
-    const job = await Job.findById(c.req.param("id"));
-    if (!job) return c.json({ error: "Job not found" }, { status: 404 });
+    const job = await Job.findById(c.req.param("id")).populate("milestones");
+
+    if (!job) {
+      return c.json({ error: "Job not found" }, { status: 404 });
+    }
+
     return c.json({ job });
   } catch (error) {
     return c.json({ error: "Invalid job ID" }, { status: 400 });
   }
 });
-
 // Update Job
 jobRouter.put("/jobs/:id", async (c) => {
   try {
