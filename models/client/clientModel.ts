@@ -4,6 +4,8 @@ export interface IClientProfile extends Document {
   userId: mongoose.Types.ObjectId;
   userType: "client";
   country: string;
+  firstName: string;
+  lastName: string;
   city: string;
   clientType: "company" | "individual";
   verification: mongoose.Types.ObjectId;
@@ -22,6 +24,8 @@ const ClientProfileSchema = new Schema<IClientProfile>({
     required: true,
     default: "client",
   },
+  firstName: { type: String, required: true },
+  lastName: { type: String, required: true },
   country: { type: String, required: true },
   city: { type: String, required: true },
   clientImage: { type: String, required: false },

@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import ClientProfile from "../../models/client/clientModel";
 import { verifyToken } from "../../helper/JwtHelpers/verifyToken";
 import User from "../../models/user/userModel";
-import { ClientProfileSchema } from "./clientTypes";
+import { ClientProfileSchema, ClientProfileUpdateSchema } from "./clientTypes";
 import JobStats from "../../models/jobStats/jobStatsModel";
 
 const clientProfile = new Hono();
@@ -29,11 +29,15 @@ clientProfile.post("/client-profile", async (c, req) => {
       return c.json({ error: "User not found" }, { status: 404 });
     }
 
+    const { firstName, lastName } = user;
+
     const body = await c.req.json();
     const parsedBody = ClientProfileSchema.parse(body);
 
     const newClientProfile = new ClientProfile({
       userId,
+      firstName,
+      lastName,
       userType: user.userType,
       ...parsedBody,
     });
@@ -107,19 +111,32 @@ clientProfile.put("/client-profile/:id", async (c) => {
     }
 
     const body = await c.req.json();
-    const parsedBody = ClientProfileSchema.partial().parse(body);
+    const parsedBody = ClientProfileUpdateSchema.partial().parse(body);
 
+    // Update client profile
     const updatedProfile = await ClientProfile.findByIdAndUpdate(
       id,
       parsedBody,
       { new: true }
     );
+
+    // If firstName or lastName is updated, update in User table
+    if (parsedBody.firstName || parsedBody.lastName) {
+      await User.findByIdAndUpdate(userId, {
+        ...(parsedBody.firstName && { firstName: parsedBody.firstName }),
+        ...(parsedBody.lastName && { lastName: parsedBody.lastName }),
+      });
+    }
+
     return c.json(
       { message: "Profile updated successfully", profile: updatedProfile },
       { status: 200 }
     );
   } catch (error) {
-    return c.json({ error: "Error updating profile" }, { status: 500 });
+    return c.json(
+      { error: error instanceof Error ? error.message : "Error updating profile" },
+      { status: 500 }
+    );
   }
 });
 
