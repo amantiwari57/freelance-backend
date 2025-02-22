@@ -11,9 +11,12 @@ import {
 import Profile from "../../models/profile/profileModel";
 import { verifyToken } from "../../helper/JwtHelpers/verifyToken";
 import User from "../../models/user/userModel";
+import { ProposalRefreshTracker } from "../../models/monthlyProposalUpdate/monthlyProposalUpdateModel";
+import { ProposalAccount } from "../../models/proposals/account/accountModel";
 
 const profile = new Hono();
 
+// ✅ POST API: Create Profile & Initialize ProposalAccount
 profile.post("/profile", universalValidation(profileSchema), async (c) => {
   try {
     const {
@@ -29,18 +32,12 @@ profile.post("/profile", universalValidation(profileSchema), async (c) => {
     // Get the token from the Authorization header
     const authHeader = c.req.header("Authorization");
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      return c.json(
-        { error: "Authorization token is required" },
-        { status: 401 }
-      );
+      return c.json({ error: "Authorization token is required" }, { status: 401 });
     }
 
-    // Extract token from the header
+    // Extract and verify token
     const token = authHeader.split(" ")[1];
-
-    // Verify token
     const tokenVerification = await verifyToken(token);
-
     if (tokenVerification.error) {
       return c.json({ error: tokenVerification.error }, { status: 401 });
     }
@@ -48,18 +45,35 @@ profile.post("/profile", universalValidation(profileSchema), async (c) => {
     const { id: userId } = tokenVerification.decoded!;
     const user = await User.findById(userId);
     if (!user) {
-      return c.json({ error: "User not found" }, 404);
+      return c.json({ error: "User not found" }, { status: 404 });
     }
 
-    const { firstName, lastName } = user;
+    const { firstName, lastName, userType } = user;
+
+    // ✅ Ensure user is a freelancer (since only freelancers need proposal tracking)
+    if (userType !== "freelancer") {
+      return c.json({ error: "Only freelancers can create a profile" }, { status: 403 });
+    }
 
     // Check if profile already exists
     const existingProfile = await Profile.findOne({ userId });
     if (existingProfile) {
-      return c.json({ error: "Profile already exists for this user" }, 400);
+      return c.json({ error: "Profile already exists for this user" }, { status: 400 });
     }
 
-    // Create a new profile
+    // ✅ Fetch the current month's proposal refresh count
+    const currentDate = new Date();
+    const month = currentDate.toLocaleString("en-US", { month: "short" }); // e.g., "Jan"
+    const year = currentDate.getFullYear();
+
+    const currentTracker = await ProposalRefreshTracker.findOne({
+      "monthDetails.month": month,
+      "monthDetails.year": year,
+    });
+    //  console.log(currentTracker)
+    const proposalsToRefresh = currentTracker?.proposalsToRefresh || 0; // Default to 0 if not found
+    // console.log(proposalsToRefresh)
+    // ✅ Create a new profile
     const newProfile = new Profile({
       userId,
       jobTitle,
@@ -73,13 +87,22 @@ profile.post("/profile", universalValidation(profileSchema), async (c) => {
       lastName,
     });
 
-    // Save the profile
     await newProfile.save();
+
+    // ✅ Create a ProposalAccount entry for tracking proposals
+    const newProposalAccount = new ProposalAccount({
+      userId,
+      userType: "freelancer",
+      proposalCount:proposalsToRefresh,
+    });
+
+    await newProposalAccount.save();
 
     return c.json(
       {
         message: "Profile created successfully",
         profile: newProfile,
+        proposalAccount: newProposalAccount,
       },
       { status: 201 }
     );
@@ -195,6 +218,7 @@ profile.get("/profiles", async (c) => {
   }
 });
 //get user profile
+// ✅ GET API: Fetch Profile (+ ProposalAccount if Owner)
 profile.get("/profile/:userId", async (c) => {
   try {
     const { userId } = c.req.param();
@@ -211,16 +235,14 @@ profile.get("/profile/:userId", async (c) => {
     // Get the token from the Authorization header
     const authHeader = c.req.header("Authorization");
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      return c.json({ error: "Authorization token is required" }, 401);
+      return c.json({ error: "Authorization token is required" }, { status: 401 });
     }
 
-    // Extract token from the header
+    // Extract token from the header & verify
     const token = authHeader.split(" ")[1];
-
-    // Verify token
     const tokenVerification = await verifyToken(token);
     if (tokenVerification.error) {
-      return c.json({ error: tokenVerification.error }, 401);
+      return c.json({ error: tokenVerification.error }, { status: 401 });
     }
 
     const { id: currentUserId } = tokenVerification.decoded!;
@@ -229,34 +251,41 @@ profile.get("/profile/:userId", async (c) => {
     const userProfile = await Profile.findOne({ userId });
 
     if (!userProfile) {
-      return c.json({ error: "Profile not found" }, 404);
+      return c.json({ error: "Profile not found" }, { status: 404 });
     }
 
     // Check if the current user is the owner of the profile
     const isOwner = userProfile.userId.toString() === currentUserId;
 
-    // Prepare the profile data with ownership information
-    const profileWithOwnership = {
+    let proposalAccount = null;
+
+    // ✅ If the user is the owner, fetch ProposalAccount
+    if (isOwner) {
+      proposalAccount = await ProposalAccount.findOne({ userId });
+    }
+
+    // Prepare the profile data
+    const profileData = {
       ...userProfile.toObject(),
       isOwner,
+      proposalAccount, // Include only if owner
     };
 
-    // Cache the profile data with an updated expiration time (e.g., 300 seconds)
-    await redis.set(cacheKey, JSON.stringify(profileWithOwnership), {
-      ex: 300,
-    });
+    // Cache the profile data for 300 seconds
+    await redis.set(cacheKey, JSON.stringify(profileData), { ex: 300 });
 
     return c.json({
       message: "Profile fetched successfully",
-      profile: profileWithOwnership,
+      profile: profileData,
     });
   } catch (error) {
     return c.json(
       { error: error instanceof Error ? error.message : "Invalid request" },
-      400
+      { status: 400 }
     );
   }
 });
+
 
 // Create Portfolio
 profile.post(
