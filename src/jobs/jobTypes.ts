@@ -9,9 +9,12 @@ const jobSchema = z.object({
   expertiseLevel: z.enum(['entry', 'intermediate', 'expert']),
   paymentType: z.enum(['fixed', 'hourly']),
   price: z.number().optional(),
+  fixedPaymentType: z.enum(['milestone', 'project']).optional(),
   pricePerHour: z
     .object({ min: z.number(), max: z.number() })
     .optional(),
   files: z.array(z.string()).optional(),
 });
 export default jobSchema;
+
+
