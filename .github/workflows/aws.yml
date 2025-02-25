@@ -23,8 +23,8 @@ jobs:
       - name: Deploy to EC2
         run: |
           ssh -i ~/.ssh/id_ed25519 ec2-user@54.172.148.253 << 'EOF'
-            cd /freelance-backend
+            cd /home/ec2-user/freelance-backend/
             git pull origin master
             npm install
-            pm2 restart hono-backend
+            pm2 restart hono-backend --update-env
           EOF
