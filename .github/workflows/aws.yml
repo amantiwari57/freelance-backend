@@ -24,7 +24,7 @@ jobs:
         run: |
           ssh -i ~/.ssh/id_ed25519 ec2-user@54.172.148.253 << 'EOF'
             cd /freelance-backend
-            git pull origin main
+            git pull origin master
             npm install
             pm2 restart all
           EOF
