@@ -30,7 +30,7 @@ app.route("/", jobMilestoneRouter);
 app.route("/", proposalMilestoneRouter);
 app.route("/", proposalRouter);
 app.get("/", (c) => {
-  return c.html('<h1>Hello! Freelancers devs "aram aman"</h1>');
+  return c.html('<h1>Hello! Freelancers are here!</h1>');
 });
 
 export default app;
