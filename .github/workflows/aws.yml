@@ -23,7 +23,7 @@ jobs:
       - name: Deploy to EC2
         run: |
           ssh -i ~/.ssh/id_ed25519 ec2-user@54.172.148.253 << 'EOF'
-            cd /path/to/your/project
+            cd /freelance-backend
             git pull origin main
             npm install
             pm2 restart all
