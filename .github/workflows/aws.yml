@@ -26,5 +26,5 @@ jobs:
             cd /freelance-backend
             git pull origin master
             npm install
-            pm2 restart all
+            pm2 restart hono-backend
           EOF
