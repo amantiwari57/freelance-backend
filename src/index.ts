@@ -42,7 +42,7 @@ app.route("/", refreshTrackerRouter);
 app.route("/", visitorRouter);
 app.route("/", proposalRouter);
 app.get("/", (c) => {
-  return c.html('<h1>Hello! Updated Cors policy!</h1>');
+  return c.html('<h1>Hello! Updated Cors policies allow from frontend!</h1>');
 });
 
 export default app;
