@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import signup from "./auth/signup";
+import { cors } from "hono/cors";
 import { connectDB } from "../helper/dbConnect";
 import login from "./auth/login";
 import googleAuth from "./auth/googleAuth";
@@ -17,6 +18,17 @@ import visitorRouter from "./visitors/visitors";
 const app = new Hono();
 
 connectDB();
+
+
+app.use(
+  "*",
+  cors({
+    origin: "*", // Allow all origins (Change this to specific domains in production)
+    allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowHeaders: ["Content-Type", "Authorization"],
+    credentials: true,
+  })
+);
 app.route("/", signup);
 app.route("/", login);
 app.route("/", googleAuth);
@@ -30,7 +42,7 @@ app.route("/", refreshTrackerRouter);
 app.route("/", visitorRouter);
 app.route("/", proposalRouter);
 app.get("/", (c) => {
-  return c.html('<h1>Hello! Updated milestones!</h1>');
+  return c.html('<h1>Hello! Updated Cors policy!</h1>');
 });
 
 export default app;
