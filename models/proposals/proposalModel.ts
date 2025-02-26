@@ -1,5 +1,4 @@
 import mongoose, { Schema, Document, Types } from "mongoose";
-import { IMilestone, Milestone } from "./milestones/milestoneModel";
 
 export enum ProposalType {
   FIXED = "fixed",
@@ -13,7 +12,12 @@ export interface IProposal extends Document {
   coverLetter: string;
   estimatedTime: string;
   proposalType: ProposalType;
-  milestones?: IMilestone[];
+  milestones?: {
+    description: string;
+    dueDate: Date;
+    price: number;
+    status: "pending" | "completed" | "cancelled";
+  }[];
   totalPrice: number;
   status:
     | "pending"
@@ -41,7 +45,16 @@ const ProposalSchema = new Schema<IProposal>(
       required: true,
     },
     milestones: [
-      { type: Schema.Types.ObjectId, ref: "Milestone", default: [] },
+      {
+        description: { type: String, required: true },
+        dueDate: { type: Date, required: true },
+        price: { type: Number, required: true },
+        status: {
+          type: String,
+          enum: ["pending", "completed", "cancelled"],
+          default: "pending",
+        },
+      },
     ],
     totalPrice: { type: Number, required: true },
     status: {

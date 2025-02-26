@@ -87,7 +87,7 @@ proposalRouter.post("/proposal/:jobId", async (c) => {
       return c.json({ error: parsedBody.error.format() }, { status: 400 });
     }
 
-    const { coverLetter, estimatedTime, proposalType, totalPrice } = parsedBody.data;
+    const { coverLetter, estimatedTime, proposalType, totalPrice,milestones } = parsedBody.data;
 
     // Check if job exists
     const job = await Job.findById(jobId);
@@ -116,6 +116,7 @@ proposalRouter.post("/proposal/:jobId", async (c) => {
       estimatedTime,
       proposalType,
       totalPrice,
+      milestones,
       status: "pending",
     });
 

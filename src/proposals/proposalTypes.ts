@@ -7,6 +7,12 @@ const ProposalSchema = z.object({
     proposalType: z.enum(["fixed", "milestones"]),
     files: z.array(z.string()).optional(),
     totalPrice: z.number().positive(),
+    milestones: z.array(z.object({
+      description: z.string().min(10),
+      dueDate: z.string(),
+      price: z.number(),
+      status: z.enum(['pending', 'completed', 'cancelled']).default('pending'),
+    })).optional(),
   });
 
   export default ProposalSchema;
