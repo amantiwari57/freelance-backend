@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { sign } from "hono/jwt";
 import User from "../../models/user/userModel";
 import { OAuth2Client } from "google-auth-library";
+import { verifyToken } from "../../helper/JwtHelpers/verifyToken";
 
 const googleAuth = new Hono();
 
@@ -92,26 +93,52 @@ googleAuth.get("/auth/google/callback", async (c) => {
 // Update user profile
 googleAuth.post("/auth/google/set-profile", async (c) => {
   try {
-    const { email, userType, country } = await c.req.json();
-
-    if (!email || !userType || !country) {
-      return c.json({ error: "Missing required fields" }, 400);
+    // Extract Authorization header
+    const authHeader = c.req.header("Authorization");
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return c.json({ error: "Authorization token is required" }, 401);
     }
 
-    const user = await User.findOneAndUpdate(
-      { email },
-      { userType, country },
-      { new: true }
-    );
+    // Extract and verify token
+    const token = authHeader.split(" ")[1];
+    const tokenVerification = await verifyToken(token);
+    if (tokenVerification.error) {
+      return c.json({ error: tokenVerification.error }, 401);
+    }
 
+    // Extract userId from decoded token
+    const { id: userId } = tokenVerification.decoded!;
+    
+    // Find user in the database
+    const user = await User.findById(userId);
     if (!user) {
       return c.json({ error: "User not found" }, 404);
     }
 
-    return c.json({ message: "Profile updated successfully", user }, 200);
+    // Get request body
+    const { userType, country } = await c.req.json();
+    if (!userType || !country) {
+      return c.json({ error: "Missing required fields" }, 400);
+    }
+
+    // Update user profile
+    const updatedUser = await User.findByIdAndUpdate(
+      userId, // Use userId directly
+      { userType, country },
+      { new: true }
+    );
+
+    if (!updatedUser) {
+      return c.json({ error: "User update failed" }, 500);
+    }
+
+    return c.json({ message: "Profile updated successfully", user: updatedUser }, 200);
   } catch (error) {
+    console.error(error);
     return c.json({ error: "Internal Server Error" }, 500);
   }
 });
+
+
 
 export default googleAuth;
