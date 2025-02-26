@@ -10,22 +10,27 @@ const jobRouter = new Hono();
 const updateJobStats = async (userId: string) => {
   let jobStats = await JobStats.findOne({ userId });
   if (!jobStats) {
-      jobStats = new JobStats({
-          userId,
-          totalJobs: 1,
-          hireRate: 0,
-          openJobs: 1,
-          totalSpent: "$0",
-          hires: 0,
-          activeJobs: 0,
-          avgHourlyRate: 0,
-          totalHours: 0
-      });
+    jobStats = new JobStats({
+      userId,
+      totalJobs: 1,
+      hireRate: 0,
+      openJobs: 1,
+      totalSpent: "$0",
+      hires: 0,
+      activeJobs: 0,
+      avgHourlyRate: 0,
+      totalHours: 0,
+    });
   } else {
-      jobStats.totalJobs += 1;
-      jobStats.openJobs += 1;
-      jobStats.hireRate = jobStats.totalJobs > 0 ? (jobStats.hires / jobStats.totalJobs) * 100 : 0;
-      jobStats.totalSpent = `$${(jobStats.hires * jobStats.avgHourlyRate * jobStats.totalHours).toFixed(2)}`;
+    jobStats.totalJobs += 1;
+    jobStats.openJobs += 1;
+    jobStats.hireRate =
+      jobStats.totalJobs > 0 ? (jobStats.hires / jobStats.totalJobs) * 100 : 0;
+    jobStats.totalSpent = `$${(
+      jobStats.hires *
+      jobStats.avgHourlyRate *
+      jobStats.totalHours
+    ).toFixed(2)}`;
   }
   await jobStats.save();
 };
@@ -55,7 +60,7 @@ jobRouter.post("/jobs", async (c) => {
 
     const body = await c.req.json();
     const parsedBody = jobSchema.parse(body);
-
+    
     const newJob = new Job({
       userId,
       userType: user.userType,

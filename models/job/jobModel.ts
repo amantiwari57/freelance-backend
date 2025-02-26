@@ -10,11 +10,16 @@ export interface IJob extends Document {
   totalTime: "1 month" | "3 months" | "6monthsormore";
   expertiseLevel: "entry" | "intermediate" | "expert";
   paymentType: "fixed" | "hourly";
-  fixedPaymentType?: "milestone" | "project"; // New field
-  price?: number; // Only for fixed payments
+  fixedPaymentType?: "milestone" | "project";
+  price?: number;
   isOpen: boolean;
-  pricePerHour?: { min: number; max: number }; // Only for hourly payments
-  milestones?: Types.ObjectId[];
+  pricePerHour?: { min: number; max: number };
+  milestones?: {
+    description: string;
+    dueDate: Date;
+    price: number;
+    status: "pending" | "completed" | "cancelled";
+  }[];
   files: string[];
   createdAt?: Date;
   updatedAt?: Date;
@@ -27,21 +32,9 @@ const JobSchema: Schema = new Schema<IJob>(
     jobTitle: { type: String, required: true },
     description: { type: String, required: true },
     skills: { type: [String], required: true },
-    timeline: {
-      type: String,
-      enum: ["small", "medium", "large"],
-      required: true,
-    },
-    totalTime: {
-      type: String,
-      enum: ["1 month", "3 months", "6monthsormore"],
-      required: true,
-    },
-    expertiseLevel: {
-      type: String,
-      enum: ["entry", "intermediate", "expert"],
-      required: true,
-    },
+    timeline: { type: String, enum: ["small", "medium", "large"], required: true },
+    totalTime: { type: String, enum: ["1 month", "3 months", "6monthsormore"], required: true },
+    expertiseLevel: { type: String, enum: ["entry", "intermediate", "expert"], required: true },
     isOpen: { type: Boolean, required: true },
     paymentType: { type: String, enum: ["fixed", "hourly"], required: true },
     fixedPaymentType: {
@@ -50,7 +43,7 @@ const JobSchema: Schema = new Schema<IJob>(
       required: function () {
         return this.paymentType === "fixed";
       },
-    }, // New field to specify how fixed payments are structured
+    },
     price: {
       type: Number,
       required: function () {
@@ -72,7 +65,18 @@ const JobSchema: Schema = new Schema<IJob>(
       },
     },
     files: { type: [String], default: [] },
-    milestones: [{ type: Schema.Types.ObjectId, ref: "JobMilestone", default: [] }],
+    milestones: [
+      {
+        description: { type: String, required: true },
+        dueDate: { type: Date, required: true },
+        price: { type: Number, required: true },
+        status: {
+          type: String,
+          enum: ["pending", "completed", "cancelled"],
+          default: "pending",
+        },
+      },
+    ],
   },
   { timestamps: true }
 );
