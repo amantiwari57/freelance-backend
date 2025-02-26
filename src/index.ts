@@ -13,6 +13,7 @@ import refreshTrackerRouter from "./refreshProposals/refreshProposals";
 // import jobMilestoneRouter from "./jobs/jobMilestone/jobMilestone";
 // import proposalMilestoneRouter from "./proposals/proposalMilestone/proposalMilestone";
 import proposalRouter from "./proposals/proposals";
+import visitorRouter from "./visitors/visitors";
 const app = new Hono();
 
 connectDB();
@@ -26,8 +27,7 @@ app.route("/", upload);
 app.route("/", jobRouter);
 app.route("/", clientProfile);
 app.route("/", refreshTrackerRouter);
-// app.route("/", jobMilestoneRouter);
-// app.route("/", proposalMilestoneRouter);
+app.route("/", visitorRouter);
 app.route("/", proposalRouter);
 app.get("/", (c) => {
   return c.html('<h1>Hello! Updated milestones!</h1>');
