@@ -10,8 +10,8 @@ import upload from "./upload/upload";
 import jobRouter from "./jobs/jobs";
 import clientProfile from "./client/clientProfile";
 import refreshTrackerRouter from "./refreshProposals/refreshProposals";
-import jobMilestoneRouter from "./jobs/jobMilestone/jobMilestone";
-import proposalMilestoneRouter from "./proposals/proposalMilestone/proposalMilestone";
+// import jobMilestoneRouter from "./jobs/jobMilestone/jobMilestone";
+// import proposalMilestoneRouter from "./proposals/proposalMilestone/proposalMilestone";
 import proposalRouter from "./proposals/proposals";
 const app = new Hono();
 
@@ -26,11 +26,11 @@ app.route("/", upload);
 app.route("/", jobRouter);
 app.route("/", clientProfile);
 app.route("/", refreshTrackerRouter);
-app.route("/", jobMilestoneRouter);
-app.route("/", proposalMilestoneRouter);
+// app.route("/", jobMilestoneRouter);
+// app.route("/", proposalMilestoneRouter);
 app.route("/", proposalRouter);
 app.get("/", (c) => {
-  return c.html('<h1>Hello! Freelancers are here!</h1>');
+  return c.html('<h1>Hello! Updated milestones!</h1>');
 });
 
 export default app;
