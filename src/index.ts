@@ -20,13 +20,24 @@ const app = new Hono();
 connectDB();
 
 
+// ✅ Allow CORS with credentials (Important for authentication)
 app.use(
-  "*",
+  '/*',
   cors({
-    origin: "*", // Allow all origins (Change this to specific domains in production)
-    allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowHeaders: ["Content-Type", "Authorization"],
+    origin: [
+      'https://freelancer.vercel.app', 
+      'http://localhost:3000',
+      'http://localhost:3001',
+      'https://freelance-1-orpin.vercel.app/'  // Add your frontend origin
+    ],
+    allowHeaders: [
+      'Content-Type',
+      'Authorization',
+      'Credentials'
+    ],
+    allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     credentials: true,
+    maxAge: 86400,
   })
 );
 app.route("/", signup);

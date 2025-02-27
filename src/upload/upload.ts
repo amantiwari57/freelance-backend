@@ -8,20 +8,7 @@ const upload = new Hono();
 upload.post("/upload", async (c) => {
   try {
     // Get the Authorization header
-    const authHeader = c.req.header("Authorization");
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      return c.json({ error: "Authorization token is required" }, 401);
-    }
-
-    // Extract and verify the token
-    const token = authHeader.split(" ")[1];
-    const tokenVerification = await verifyToken(token);
-    if (tokenVerification.error) {
-      return c.json({ error: tokenVerification.error }, 401);
-    }
-
-    // Token is valid, extract user info
-    const { id: userId } = tokenVerification.decoded!;
+  
 
     // Get form data
     const formData = await c.req.formData();
@@ -37,7 +24,7 @@ upload.post("/upload", async (c) => {
     return c.json({
       message: "File uploaded successfully",
       fileUrl: fileUrl,
-      uploadedBy: userId, // Include the user ID in response
+      // uploadedBy: userId, // Include the user ID in response
     });
   } catch (error) {
     return c.json(

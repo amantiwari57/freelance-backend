@@ -3,15 +3,36 @@ import { sign } from "hono/jwt";
 import User from "../../models/user/userModel";
 import { OAuth2Client } from "google-auth-library";
 import { verifyToken } from "../../helper/JwtHelpers/verifyToken";
+import { cors } from "hono/cors";
+
 
 const googleAuth = new Hono();
 
+googleAuth.use(
+  cors({
+    origin: [
+      "https://freelancer.vercel.app",
+      "http://localhost:3000",
+      "http://localhost:3001",
+      "https://freelance-1-orpin.vercel.app",
+    ],
+    allowHeaders: [
+      "Content-Type",
+      "Authorization",
+    ],
+    allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    credentials: true, // ✅ Important for cookies/auth headers
+    maxAge: 86400,
+  })
+);
 // Initialize Google OAuth client
 const oauth2Client = new OAuth2Client({
   clientId: process.env.GOOGLE_CLIENT_ID,
   clientSecret: process.env.GOOGLE_CLIENT_SECRET,
   redirectUri: process.env.GOOGLE_REDIRECT_URI,
 });
+
+console.log("Backend is using redirect URI:", process.env.GOOGLE_REDIRECT_URI);
 
 // Google Auth Route (Redirect to Google)
 googleAuth.get("/auth/google", async (c) => {
