@@ -15,6 +15,9 @@ import refreshTrackerRouter from "./refreshProposals/refreshProposals";
 // import proposalMilestoneRouter from "./proposals/proposalMilestone/proposalMilestone";
 import proposalRouter from "./proposals/proposals";
 import visitorRouter from "./visitors/visitors";
+import agreementRouter from "./agreements/agreement";
+import testCreateJob from "./testcontract/testContract";
+
 const app = new Hono();
 
 connectDB();
@@ -52,6 +55,8 @@ app.route("/", clientProfile);
 app.route("/", refreshTrackerRouter);
 app.route("/", visitorRouter);
 app.route("/", proposalRouter);
+app.route("/agreements", agreementRouter);
+testCreateJob()
 app.get("/", (c) => {
   return c.html('<h1>Hello! Updated Cors policies allow from frontend!</h1>');
 });
