@@ -31,7 +31,7 @@ app.use(
       'https://freelancer.vercel.app', 
       'http://localhost:3000',
       'http://localhost:3001',
-      'https://freelance-1-orpin.vercel.app/'  // Add your frontend origin
+      'https://freelance-1-orpin.vercel.app'  // Add your frontend origin
     ],
     allowHeaders: [
       'Content-Type',
