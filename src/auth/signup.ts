@@ -52,7 +52,7 @@ signup.post("/auth/signup", async (c) => {
   } catch (error) {
     return c.json(
       { error: error instanceof Error ? error.message : "Invalid request" },
-      500
+      {status: 500}
     );
   }
 });
