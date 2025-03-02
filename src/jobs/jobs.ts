@@ -4,6 +4,7 @@ import { verifyToken } from "../../helper/JwtHelpers/verifyToken";
 import jobSchema from "./jobTypes";
 import User from "../../models/user/userModel";
 import JobStats from "../../models/jobStats/jobStatsModel";
+import Profile from "../../models/profile/profileModel";
 
 const jobRouter = new Hono();
 
@@ -175,5 +176,50 @@ jobRouter.delete("/jobs/:id", async (c) => {
     return c.json({ error: "Failed to delete job" }, { status: 400 });
   }
 });
+jobRouter.get("/freelancer/best-matches", async (c) => {
+  try {
+    const authHeader = c.req.header("Authorization");
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return c.json({ error: "Authorization token is required" }, { status: 401 });
+    }
+
+    const token = authHeader.split(" ")[1];
+    const tokenVerification = await verifyToken(token);
+    if (tokenVerification.error) {
+      return c.json({ error: tokenVerification.error }, { status: 401 });
+    }
+
+    const { id: freelancerId } = tokenVerification.decoded!;
+    const freelancerProfile = await Profile.findOne({ userId: freelancerId });
+
+    if (!freelancerProfile) {
+      return c.json({ error: "Freelancer profile not found" }, { status: 404 });
+    }
+
+    const freelancerSkills = freelancerProfile.skills || [];
+    if (freelancerSkills.length === 0) {
+      return c.json({ error: "No skills found in profile" }, { status: 400 });
+    }
+
+    // Find jobs that match at least one of the freelancer's skills
+    const matchedJobs = await Job.find({
+      skillsRequired: { $in: freelancerSkills },
+      isOpen: true,
+    });
+
+    // Rank jobs based on the number of matching skills
+    const rankedJobs = matchedJobs
+      .map((job) => ({
+        job,
+        matchCount: job.skills.filter((skill) => freelancerSkills.includes(skill)).length,
+      }))
+      .sort((a, b) => b.matchCount - a.matchCount); // Sort by most matches
+
+    return c.json({ matches: rankedJobs.map((item) => item.job) }, { status: 200 });
+  } catch (error) {
+    return c.json({ error: "Failed to fetch best matches" }, { status: 500 });
+  }
+});
+
 
 export default jobRouter;
