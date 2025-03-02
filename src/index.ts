@@ -56,7 +56,7 @@ app.route("/", refreshTrackerRouter);
 app.route("/", visitorRouter);
 app.route("/", proposalRouter);
 app.route("/agreements", agreementRouter);
-testCreateJob()
+// testCreateJob()
 app.get("/", (c) => {
   return c.html('<h1>Hello! Updated Cors policies allow from frontend!</h1>');
 });

@@ -11,6 +11,7 @@ export const profileSchema = z.object({
   hourlyRate: z.number().optional(),
   country: z.string().optional(),
   zipcode: z.string().optional(),
+  skills: z.array(z.string()).optional(),
 });
 
 // Portfolio Schema Validation
