@@ -19,24 +19,16 @@ contract FreelanceEscrow {
         uint256 totalAmount;
         uint256 escrowBalance;
         bool isCompleted;
+        bool hasMilestones;
         Milestone[] milestones;
     }
 
     mapping(uint256 => Job) public jobs; // Job ID -> Job details
     uint256 public jobCounter;
 
-    event JobCreated(
-        uint256 jobId,
-        address client,
-        address freelancer,
-        uint256 totalAmount
-    );
+    event JobCreated(uint256 jobId, address client, address freelancer, uint256 totalAmount);
     event MilestoneCompleted(uint256 jobId, uint256 milestoneIndex);
-    event PaymentReleased(
-        uint256 jobId,
-        uint256 milestoneIndex,
-        uint256 amount
-    );
+    event PaymentReleased(uint256 jobId, uint256 amount);
     event JobCompleted(uint256 jobId);
 
     modifier onlyClient(uint256 jobId) {
@@ -45,10 +37,7 @@ contract FreelanceEscrow {
     }
 
     modifier onlyFreelancer(uint256 jobId) {
-        require(
-            msg.sender == jobs[jobId].freelancer,
-            "Not the assigned freelancer"
-        );
+        require(msg.sender == jobs[jobId].freelancer, "Not the assigned freelancer");
         _;
     }
 
@@ -66,7 +55,7 @@ contract FreelanceEscrow {
         require(msg.value == _totalAmount, "Must deposit the total amount");
         require(
             _descriptions.length == _amounts.length &&
-                _amounts.length == _dueDates.length,
+            _amounts.length == _dueDates.length,
             "Invalid milestones"
         );
 
@@ -77,6 +66,7 @@ contract FreelanceEscrow {
         newJob.totalAmount = _totalAmount;
         newJob.escrowBalance = _totalAmount;
         newJob.isCompleted = false;
+        newJob.hasMilestones = _descriptions.length > 0;
 
         for (uint256 i = 0; i < _descriptions.length; i++) {
             newJob.milestones.push(
@@ -93,71 +83,61 @@ contract FreelanceEscrow {
         emit JobCreated(jobCounter, msg.sender, _freelancer, _totalAmount);
     }
 
-    function markMilestoneCompleted(
-        uint256 jobId,
-        uint256 milestoneIndex
-    ) external onlyClient(jobId) {
+    function markMilestoneCompleted(uint256 jobId, uint256 milestoneIndex) external onlyClient(jobId) {
         Job storage job = jobs[jobId];
-        require(
-            milestoneIndex < job.milestones.length,
-            "Invalid milestone index"
-        );
-        require(
-            !job.milestones[milestoneIndex].isCompleted,
-            "Milestone already completed"
-        );
+        require(job.hasMilestones, "No milestones in this job");
+        require(milestoneIndex < job.milestones.length, "Invalid milestone index");
+        require(!job.milestones[milestoneIndex].isCompleted, "Milestone already completed");
 
         job.milestones[milestoneIndex].isCompleted = true;
         emit MilestoneCompleted(jobId, milestoneIndex);
     }
 
-    function releaseMilestonePayment(
-        uint256 jobId,
-        uint256 milestoneIndex
-    ) external onlyClient(jobId) {
+    function releasePayment(uint256 jobId, uint256 milestoneIndex) external onlyClient(jobId) {
         Job storage job = jobs[jobId];
-        require(
-            milestoneIndex < job.milestones.length,
-            "Invalid milestone index"
-        );
-        require(
-            job.milestones[milestoneIndex].isCompleted,
-            "Milestone not marked complete"
-        );
-        require(
-            !job.milestones[milestoneIndex].isPaid,
-            "Milestone already paid"
-        );
+        require(job.escrowBalance > 0, "No funds available");
 
-        uint256 payment = job.milestones[milestoneIndex].amount;
+        uint256 payment;
+
+        if (job.hasMilestones) {
+            require(milestoneIndex < job.milestones.length, "Invalid milestone index");
+            require(job.milestones[milestoneIndex].isCompleted, "Milestone not completed");
+            require(!job.milestones[milestoneIndex].isPaid, "Milestone already paid");
+
+            payment = job.milestones[milestoneIndex].amount;
+            job.milestones[milestoneIndex].isPaid = true;
+        } else {
+            payment = job.escrowBalance;
+            job.escrowBalance = 0;
+        }
+
         uint256 platformFee = (payment * platformFeePercentage) / 100;
         uint256 freelancerAmount = payment - platformFee;
-
-        require(job.escrowBalance >= payment, "Insufficient funds in escrow");
         job.escrowBalance -= payment;
-        job.milestones[milestoneIndex].isPaid = true;
 
         payable(platform).transfer(platformFee);
         payable(job.freelancer).transfer(freelancerAmount);
 
-        emit PaymentReleased(jobId, milestoneIndex, freelancerAmount);
+        emit PaymentReleased(jobId, freelancerAmount);
     }
 
     function markJobCompleted(uint256 jobId) external onlyClient(jobId) {
         Job storage job = jobs[jobId];
         require(!job.isCompleted, "Job already completed");
 
-        for (uint256 i = 0; i < job.milestones.length; i++) {
-            require(job.milestones[i].isPaid, "All milestones must be paid");
+        if (job.hasMilestones) {
+            for (uint256 i = 0; i < job.milestones.length; i++) {
+                require(job.milestones[i].isPaid, "All milestones must be paid");
+            }
+        } else {
+            require(job.escrowBalance == 0, "Funds must be released before completion");
         }
 
         job.isCompleted = true;
         emit JobCompleted(jobId);
     }
 
-    function withdrawRemainingFunds(
-        uint256 jobId
-    ) external onlyFreelancer(jobId) {
+    function withdrawRemainingFunds(uint256 jobId) external onlyFreelancer(jobId) {
         Job storage job = jobs[jobId];
         require(job.isCompleted, "Job must be marked completed first");
         require(job.escrowBalance > 0, "No funds left to withdraw");

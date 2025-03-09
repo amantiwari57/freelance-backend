@@ -197,29 +197,40 @@ jobRouter.get("/freelancer/best-matches", async (c) => {
     }
 
     const freelancerSkills = freelancerProfile.skills || [];
+    // console.log(freelancerSkills)
     if (freelancerSkills.length === 0) {
       return c.json({ error: "No skills found in profile" }, { status: 400 });
     }
 
     // Find jobs that match at least one of the freelancer's skills
     const matchedJobs = await Job.find({
-      skillsRequired: { $in: freelancerSkills },
+      skills: { $in: freelancerSkills },
       isOpen: true,
-    });
+    }); // Populate clientProfile to get location
 
     // Rank jobs based on the number of matching skills
     const rankedJobs = matchedJobs
       .map((job) => ({
         job,
         matchCount: job.skills.filter((skill) => freelancerSkills.includes(skill)).length,
+        location: job.location || "Unknown", // Include job location
       }))
       .sort((a, b) => b.matchCount - a.matchCount); // Sort by most matches
 
-    return c.json({ matches: rankedJobs.map((item) => item.job) }, { status: 200 });
-  } catch (error) {
-    return c.json({ error: "Failed to fetch best matches" }, { status: 500 });
+    return c.json(
+      {
+        matches: rankedJobs.map((item) => ({
+          ...item.job.toObject(),
+          location: item.location,
+        })),
+      },
+      { status: 200 }
+    );
+  } catch (error:any) {
+    return c.json({ error: "Failed to fetch best matches", message:error.message }, { status: 500 });
   }
 });
+
 
 
 export default jobRouter;

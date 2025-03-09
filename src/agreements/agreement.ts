@@ -3,7 +3,7 @@ import { ethers } from "ethers";
 import { verifyToken } from "../../helper/JwtHelpers/verifyToken";
 import Job from "../../models/job/jobModel";
 import { Agreement } from "../../models/agreement/agreementModel";
-
+import { authenticate } from "../../helper/auth/authenticate";
 
 const agreementRouter = new Hono();
 
@@ -15,24 +15,6 @@ const agreementRouter = new Hono();
 // const contract = new ethers.Contract(contractAddress!, contractABI, wallet);
 
 // ✅ Middleware: Authenticate User
-const authenticate = async (c: any) => {
-  try {
-    const authHeader = c.req.header("Authorization");
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      return c.json({ error: "Authorization token is required" }, 401);
-    }
-
-    const token = authHeader.split(" ")[1];
-    const tokenVerification = await verifyToken(token);
-    if (tokenVerification.error) {
-      return c.json({ error: tokenVerification.error }, 401);
-    }
-
-    return tokenVerification.decoded!.id; // ✅ Return user ID
-  } catch (error) {
-    return c.json({ error: "Authentication failed" }, 401);
-  }
-};
 
 // 📌 **Client Creates Agreement (Only Job Owner)**
 agreementRouter.post("/create/:jobId", async (c) => {
@@ -40,7 +22,8 @@ agreementRouter.post("/create/:jobId", async (c) => {
   if (typeof userId !== "string") return userId; // If auth fails, return error response
 
   const { jobId } = c.req.param();
-  const { freelancerId, jobDescription, milestones, totalAmount } = await c.req.json();
+  const { freelancerId, jobDescription, milestones, totalAmount } =
+    await c.req.json();
 
   const job = await Job.findById(jobId);
   if (!job) return c.json({ error: "Job not found" }, 404);
@@ -78,7 +61,10 @@ agreementRouter.post("/sign/:agreementId", async (c) => {
 
   if (!agreement) return c.json({ error: "Agreement not found" }, 404);
   if (agreement.freelancerId.toString() !== userId) {
-    return c.json({ error: "Only the assigned freelancer can sign this agreement" }, 403);
+    return c.json(
+      { error: "Only the assigned freelancer can sign this agreement" },
+      403
+    );
   }
 
   agreement.status = "confirmed";
@@ -95,7 +81,8 @@ agreementRouter.get("/:jobId", async (c) => {
   const { jobId } = c.req.param();
   const agreement = await Agreement.findOne({ jobId });
 
-  if (!agreement) return c.json({ error: "No agreement found for this job" }, 404);
+  if (!agreement)
+    return c.json({ error: "No agreement found for this job" }, 404);
 
   return c.json({ agreement });
 });

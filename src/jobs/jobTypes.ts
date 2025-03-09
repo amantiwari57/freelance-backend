@@ -12,6 +12,7 @@ const jobSchema = z.object({
   fixedPaymentType: z.enum(["milestone", "project"]).optional(),
   pricePerHour: z.object({ min: z.number(), max: z.number() }).optional(),
   files: z.array(z.string()).optional(),
+  location: z.string().optional(),
   milestones: z
     .array(
       z.object({

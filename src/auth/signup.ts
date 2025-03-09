@@ -46,7 +46,7 @@ signup.post("/auth/signup", async (c) => {
     await newUser.save();
 
     // 🔹 Generate JWT token
-    const token = await sign({ email: newUser.email, id: newUser._id }, "secret");
+    const token = await sign({ email: newUser.email, id: newUser._id }, process.env.JWT_SECRET!);
 
     return c.json({ message: "User registered successfully", token, userType: newUser.userType }, 201);
   } catch (error) {

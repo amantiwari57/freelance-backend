@@ -31,7 +31,7 @@ login.post("/auth/login", async (c) => {
     }
 
     // 🔹 Generate JWT token
-    const token = await sign({ email: user.email, id: user._id }, "secret");
+    const token = await sign({ email: user.email, id: user._id }, process.env.JWT_SECRET!);
 
     return c.json({ message: "Logged in successfully", token ,userType:user.userType }, 201);
   } catch (error) {

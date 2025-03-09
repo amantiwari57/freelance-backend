@@ -26,6 +26,7 @@ profile.post("/profile", universalValidation(profileSchema), async (c) => {
       address,
       country,
       hourlyRate,
+      skills,
       zipcode,
     } = await c.req.json();
 
@@ -77,6 +78,7 @@ profile.post("/profile", universalValidation(profileSchema), async (c) => {
     const newProfile = new Profile({
       userId,
       jobTitle,
+      skills,
       profileDescription,
       cityName,
       address,

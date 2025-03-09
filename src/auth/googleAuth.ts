@@ -97,7 +97,7 @@ googleAuth.get("/auth/google/callback", async (c) => {
     }
 
     // Generate JWT
-    const token = await sign({ email: user.email, id: user._id }, "secret");
+    const token = await sign({ email: user.email, id: user._id }, process.env.JWT_SECRET!);
     
     return c.json({
       message: "Login successful",
