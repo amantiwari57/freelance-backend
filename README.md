@@ -7,7 +7,7 @@ This is the backend API for a freelance platform that connects freelancers with 
 - **Runtime**: Bun
 - **Framework**: Hono.js
 - **Database**: MongoDB (Mongoose)
-- **Messaging**: Redis Pub/Sub
+- **Messaging**: Upstash Redis
 - **Real-time Communication**: WebSockets
 - **File Storage**: AWS S3
 
@@ -17,7 +17,7 @@ This is the backend API for a freelance platform that connects freelancers with 
 
 - Bun runtime
 - MongoDB
-- Redis server
+- Upstash Redis account
 
 ### Installation
 
@@ -34,11 +34,9 @@ This is the backend API for a freelance platform that connects freelancers with 
    # MongoDB Connection
    MONGODB_URI=mongodb://localhost:27017/freelance-db
    
-   # Redis Configuration
-   REDIS_HOST=localhost
-   REDIS_PORT=6379
-   REDIS_PASSWORD=your_redis_password
-   REDIS_USERNAME=your_redis_username
+   # Upstash Redis Configuration
+   UPSTASH_REDIS_REST_URL=your_upstash_redis_url
+   UPSTASH_REDIS_REST_TOKEN=your_upstash_redis_token
    
    # JWT Secrets
    JWT_SECRET=your_jwt_secret_key
@@ -505,10 +503,10 @@ Real-time messaging is handled through WebSocket connections:
 
 ## Real-time Messaging Architecture
 
-The application uses Redis Pub/Sub for real-time messaging:
+The application uses Upstash Redis for real-time messaging:
 
-1. Messages are published to Redis channels using the `publishMessage` function
-2. Redis subscribers listen for messages on the same channels
+1. Messages are published to Redis lists using the `publishMessage` function
+2. A periodic polling mechanism checks for new messages in Redis lists
 3. When a message is received, it's saved to the database and sent to relevant users via WebSockets
 4. WebSocket connections are authenticated using JWT tokens
 5. WebSocket clients receive real-time updates for new messages
