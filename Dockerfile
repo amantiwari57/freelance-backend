@@ -13,9 +13,6 @@ RUN bun install --frozen-lockfile
 # Copy the rest of the application
 COPY . .
 
-# Build TypeScript (if needed)
-RUN bun run build
-
 # Expose the port your app runs on
 ENV PORT=3000
 EXPOSE 3000
