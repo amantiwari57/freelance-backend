@@ -1,20 +1,24 @@
-# Use a minimal Node.js base image
-FROM node:18-alpine
+# Use the official Bun image
+FROM oven/bun:1.0.35
 
-# Set working directory inside the container
+# Set working directory
 WORKDIR /app
 
-# Copy package.json and package-lock.json first for better caching
-COPY package.json package-lock.json ./
+# Copy package files
+COPY package.json bun.lockb ./
 
 # Install dependencies
-RUN npm install
+RUN bun install --frozen-lockfile
 
-# Copy the entire project
+# Copy the rest of the application
 COPY . .
 
-# Expose the application port
+# Build TypeScript (if needed)
+RUN bun run build
+
+# Expose the port your app runs on
+ENV PORT=3000
 EXPOSE 3000
 
-# Start the application using ts-node
-CMD ["npx", "ts-node", "src/index.ts"]
+# Start the application
+CMD ["bun", "run", "src/index.ts"] 
