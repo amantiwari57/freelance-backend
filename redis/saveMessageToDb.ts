@@ -1,21 +1,22 @@
 import { Types } from "mongoose";
-
+import { Message, MessageStatus, MessageType } from "../models/messages/messages";
 import { Conversation } from "../models/conversations/conversations";
-import {
-  Message,
-  MessageStatus,
-  MessageType,
-} from "../models/messages/messages";
 
-interface SaveMessageParams {
+// Define the parameters for saving a message
+export interface SaveMessageParams {
   senderId: string;
   receiverId: string;
   content: string;
   messageType: MessageType;
-  files?: string[]; // Array of file URLs or paths
+  files?: string[];
   timestamp?: Date;
 }
 
+/**
+ * Saves a message to the database
+ * @param messageData The message data to save
+ * @returns The saved message
+ */
 export const saveMessageToDB = async (messageData: SaveMessageParams) => {
   try {
     const { senderId, receiverId, content, messageType, files, timestamp } = messageData;
@@ -39,14 +40,12 @@ export const saveMessageToDB = async (messageData: SaveMessageParams) => {
       participants: { $all: [senderObjectId, receiverObjectId] },
     });
 
-    // console.log("conversation result:", conversation);
-
     if (!conversation) {
       console.log("No conversation found, creating a new one...");
       conversation = await new Conversation({
         participants: [senderObjectId, receiverObjectId],
       }).save();
-      // console.log("New conversation created:", conversation);
+      console.log("New conversation created:", conversation);
     }
 
     const newMessage = await Message.create({
@@ -64,4 +63,4 @@ export const saveMessageToDB = async (messageData: SaveMessageParams) => {
     console.error("Error saving message:", error);
     throw error;
   }
-};
+}; 

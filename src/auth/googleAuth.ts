@@ -103,6 +103,7 @@ googleAuth.get("/auth/google/callback", async (c) => {
       message: "Login successful",
       token,
       userType: user.userType,
+      userId: user._id,
     }, 200);
 
   } catch (error) {

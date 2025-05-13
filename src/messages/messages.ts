@@ -1,14 +1,14 @@
 import { Hono } from "hono";
-import { KafkaVerifyToken } from "../../helper/JwtHelpers/kafkaVerifyToken";
-import { producer } from "../../kafka/kafka";
+import { MessageVerifyToken } from "../../helper/JwtHelpers/kafkaVerifyToken";
 import { MessageType, Message, MessageStatus } from "../../models/messages/messages";
 import { Conversation } from "../../models/conversations/conversations";
 import { Types } from "mongoose";
+import { publishMessage } from "../../redis/redis";
 
 const messageRouter = new Hono();
 
 // 🔹 Authentication Middleware
-const authenticateKafka = async (c: any) => {
+export const authenticateKafka = async (c: any) => {
   try {
     const authHeader = c.req.header("Authorization");
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
@@ -16,7 +16,7 @@ const authenticateKafka = async (c: any) => {
     }
 
     const token = authHeader.split(" ")[1];
-    const tokenVerification = await KafkaVerifyToken(token);
+    const tokenVerification = await MessageVerifyToken(token);
     if (tokenVerification.error) {
       return c.json({ error: tokenVerification.error }, 401);
     }
@@ -27,7 +27,7 @@ const authenticateKafka = async (c: any) => {
   }
 };
 
-// 🔹 Send Message API (Kafka Producer)
+// 🔹 Send Message API (Redis Publisher)
 messageRouter.post("/send", async (c) => {
   try {
     const userId = await authenticateKafka(c);
@@ -62,23 +62,21 @@ messageRouter.post("/send", async (c) => {
       );
     }
 
-    // Publish message to Kafka
-    await producer.send({
-      topic: "message",
-      messages: [
-        {
-          key: "NEW_MESSAGE",
-          value: JSON.stringify({
-            senderId: userId,
-            receiverId,
-            content,
-            messageType,
-            files: files || [], // Include files if provided
-            timestamp: new Date().toISOString(),
-          }),
-        },
-      ],
+    // Publish message to Redis
+    const messageData = JSON.stringify({
+      senderId: userId,
+      receiverId,
+      content,
+      messageType,
+      files: files || [], // Include files if provided
+      timestamp: new Date().toISOString(),
     });
+
+    const published = await publishMessage("message", messageData);
+
+    if (!published) {
+      return c.json({ error: "Failed to publish message" }, 500);
+    }
 
     return c.json({ success: true, message: "Message queued successfully!" });
   } catch (error) {
@@ -87,64 +85,41 @@ messageRouter.post("/send", async (c) => {
   }
 });
 
-// 🔹 Get Messages Between Two Users
-messageRouter.get("/conversation/:receiverId", async (c) => {
+// Get conversation messages
+messageRouter.get("/conversation/:conversationId", async (c) => {
   try {
     const userId = await authenticateKafka(c);
     if (typeof userId !== "string") return userId;
 
-    const receiverId = c.req.param("receiverId");
-    if (!receiverId) {
-      return c.json({ error: "Receiver ID is required" }, 400);
+    const conversationId = c.req.param("conversationId");
+    
+    // Validate conversationId
+    if (!Types.ObjectId.isValid(conversationId)) {
+      return c.json({ error: "Invalid conversation ID" }, 400);
     }
 
-    // Validate ObjectId format
-    if (!Types.ObjectId.isValid(userId) || !Types.ObjectId.isValid(receiverId)) {
-      return c.json({ error: "Invalid user or receiver ID" }, 400);
-    }
-
-    const senderObjectId = new Types.ObjectId(userId);
-    const receiverObjectId = new Types.ObjectId(receiverId);
-
-    // Find the conversation between the two users
-    const conversation = await Conversation.findOne({
-      participants: { $all: [senderObjectId, receiverObjectId] },
-    });
-
+    // Check if user is part of the conversation
+    const conversation = await Conversation.findById(conversationId);
     if (!conversation) {
-      return c.json({ messages: [], message: "No conversation found" }, 200);
+      return c.json({ error: "Conversation not found" }, 404);
     }
 
-    // Get query parameters for pagination
-    const page = parseInt(c.req.query("page") || "1", 10);
-    const limit = parseInt(c.req.query("limit") || "20", 10);
-    const skip = (page - 1) * limit;
+    // Convert userId string to ObjectId for comparison
+    const userObjectId = new Types.ObjectId(userId);
+    
+    // Check if user is a participant
+    if (!conversation.participants.some(p => p.equals(userObjectId))) {
+      return c.json({ error: "You are not authorized to view this conversation" }, 403);
+    }
 
-    // Fetch messages for this conversation
-    const messages = await Message.find({
-      conversationId: conversation._id,
-    })
-      .sort({ createdAt: -1 }) // Newest first
-      .skip(skip)
-      .limit(limit)
-      .lean();
+    // Get messages
+    const messages = await Message.find({ conversationId })
+      .sort({ createdAt: 1 })
+      .populate("sender", "name email");
 
-    const totalMessages = await Message.countDocuments({
-      conversationId: conversation._id,
-    });
-
-    return c.json({
-      success: true,
-      messages,
-      pagination: {
-        page,
-        limit,
-        totalPages: Math.ceil(totalMessages / limit),
-        totalMessages,
-      },
-    });
+    return c.json({ success: true, messages });
   } catch (error) {
-    console.error("Error fetching messages:", error);
+    console.error("Error fetching conversation messages:", error);
     return c.json({ error: "Internal Server Error" }, 500);
   }
 });

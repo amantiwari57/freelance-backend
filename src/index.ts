@@ -17,9 +17,10 @@ import proposalRouter from "./proposals/proposals";
 import visitorRouter from "./visitors/visitors";
 import agreementRouter from "./agreements/agreement";
 import testCreateJob from "./testcontract/testContract";
-import { consumer } from "../kafka/kafka";
-import messageRouter from "./messages/messages";
-import { saveMessageToDB } from "../kafka/saveMessageToDb";
+import { MessageVerifyToken } from "../helper/JwtHelpers/kafkaVerifyToken";
+import messageRouter, { authenticateKafka } from "./messages/messages";
+import { subscriber, setupMessageHandler } from "../redis/redis";
+import { saveMessageToDB } from "../redis/saveMessageToDb";
 
 const app = new Hono();
 connectDB();
@@ -70,64 +71,72 @@ app.get("/", (c) => {
 
 app.get(
   "/ws",
-  upgradeWebSocket(() => ({
-    onOpen(_, ws) {
-      const rawWs = ws.raw as ServerWebSocket;
-      rawWs.subscribe(topic);
-      activeSockets.add(rawWs);
-      console.log(`WebSocket connected to topic '${topic}'`);
-    },
-    onClose(_, ws) {
-      const rawWs = ws.raw as ServerWebSocket;
-      rawWs.unsubscribe(topic);
-      activeSockets.delete(rawWs);
-      console.log(`WebSocket disconnected from '${topic}'`);
-    },
-  }))
+  upgradeWebSocket(async (c: any) => {
+    const url = new URL(c.req.url, `http://${c.req.header("host")}`);
+    const token = url.searchParams.get("token");
+
+    return {
+      async onOpen(_, ws) {
+        try {
+          if (!token) throw new Error("Missing token");
+      
+          const tokenVerification = await MessageVerifyToken(token);
+          if (tokenVerification.error) {
+            throw new Error(tokenVerification.error);
+          }
+      
+          const userId = tokenVerification.decoded?.id;
+          if (!userId) throw new Error("Invalid token");
+      
+          // ✅ Store userId in WebSocket instance
+          const rawWs = ws.raw as ServerWebSocket & { userId?: string };
+          rawWs.userId = userId; // Attach userId
+      
+          rawWs.subscribe(topic);
+          activeSockets.add(rawWs);
+          console.log(`✅ Authenticated WebSocket (user ${userId})`);
+        } catch (error: any) {
+          console.log("⚠️ WebSocket auth error:", error.message);
+          ws.close(4003, error.message); // Close with policy violation code
+        }
+      },
+      onClose(_, ws) {
+        activeSockets.delete(ws.raw as ServerWebSocket);
+        console.log("❌ WebSocket disconnected");
+      },
+    };
+  })
 );
 
-// Kafka Consumer for WebSocket Notifications
-const sendRealTimeUpdates = async () => {
-  await consumer.connect();
-  // console.log("kafka consumer connectd")
-  await consumer.subscribe({ topic: "message", fromBeginning: false });
-  const logger = {
-    info: (msg: string, meta?: any) => console.log(`[INFO] ${msg}`, meta || ""),
-    error: (msg: string, meta?: any) =>
-      console.error(`[ERROR] ${msg}`, meta || ""),
-  };
-  await consumer.run({
-    eachMessage: async ({ message }) => {
-      try {
-        if (!message.value) return;
+// Redis Subscriber for WebSocket Notifications
+setupMessageHandler(async (messageStr) => {
+  try {
+    const msg = JSON.parse(messageStr);
+    console.log("📥 Received message:", msg);
 
-        const msg = JSON.parse(message.value.toString());
-        console.log("📥 Received message:", msg);
+    // Save message to database
+    const savedMessage = await saveMessageToDB(msg);
+    console.log("✅ Saved to DB:", savedMessage);
 
-        const savedMessage = await saveMessageToDB(msg);
-        console.log("📥 Saved message to DB", savedMessage);
+    // Send to relevant WebSocket connections
+    activeSockets.forEach((ws) => {
+      const typedWs = ws as ServerWebSocket & { userId?: string }; // Extend WebSocket type
 
-        // Broadcast message to all active WebSockets
-        activeSockets.forEach((ws) => {
-          ws.send(JSON.stringify(msg));
-        });
-
-        console.log("✅ Sent real-time update via WebSocket");
-      } catch (error) {
-        console.error("❌ Error processing message:", error);
+      if (typedWs.userId === msg.receiverId || typedWs.userId === msg.senderId) {
+        typedWs.send(JSON.stringify(msg));
       }
-    },
-  });
-};
+    });
 
-sendRealTimeUpdates().catch(console.error);
-
-// WebSocket Route
+    console.log("✅ Sent real-time update via WebSocket");
+  } catch (error) {
+    console.error("❌ Error processing message:", error);
+  }
+});
 
 // Start Server
 const server = Bun.serve({
   fetch: app.fetch,
-  port: 3000,
+  port: process.env.PORT ? parseInt(process.env.PORT) : 3000,
   websocket,
 });
 console.log(`Server running at http://localhost:${server.port}`);

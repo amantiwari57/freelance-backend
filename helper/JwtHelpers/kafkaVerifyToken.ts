@@ -13,7 +13,7 @@ interface TokenVerificationResponse {
 }
 
 // Function to verify the token directly
-export const KafkaVerifyToken = async (token: string): Promise<TokenVerificationResponse> => {
+export const MessageVerifyToken = async (token: string): Promise<TokenVerificationResponse> => {
   try {
     // Verify token using the 'verify' method from hono/jwt
     const decoded = await verify(token, process.env.KAFKA_SECRET!);
