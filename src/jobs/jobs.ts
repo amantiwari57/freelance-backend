@@ -99,12 +99,7 @@ jobRouter.get("/jobs/:id", async (c) => {
   try {
     const jobId = c.req.param("id");
 
-    const job = await Job.findById(jobId)
-      .populate("milestones")
-      .populate({
-        path: "user",
-        select: "firstName lastName",
-      });
+    const job = await Job.findById(jobId).populate("milestones")
 
     if (!job) {
       return c.json({ error: "Job not found" }, 404);
