@@ -97,17 +97,25 @@ jobRouter.get("/jobs", async (c) => {
 // Get Job by ID
 jobRouter.get("/jobs/:id", async (c) => {
   try {
-    const job = await Job.findById(c.req.param("id")).populate("milestones").populate("user", "firstName lastName"); // Populates only firstName and lastName;
+    const jobId = c.req.param("id");
+
+    const job = await Job.findById(jobId)
+      .populate("milestones")
+      .populate({
+        path: "user",
+        select: "firstName lastName",
+      });
 
     if (!job) {
-      return c.json({ error: "Job not found" }, { status: 404 });
+      return c.json({ error: "Job not found" }, 404);
     }
 
-    return c.json({ job });
+    return c.json({ job }, 200);
   } catch (error) {
-    return c.json({ error: "Invalid job ID" }, { status: 400 });
+    return c.json({ error: "Invalid job ID" }, 400);
   }
 });
+
 // Update Job
 jobRouter.put("/jobs/:id", async (c) => {
   try {
