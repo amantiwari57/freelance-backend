@@ -3,7 +3,7 @@ import { ethers } from "ethers";
 import { verifyToken } from "../../helper/JwtHelpers/verifyToken";
 import Job from "../../models/job/jobModel";
 import { Agreement } from "../../models/agreement/agreementModel";
-import { authenticate } from "../../helper/auth/authenticate";
+import { authenticate } from "../../helper/authHelper/authenticate";
 
 const agreementRouter = new Hono();
 

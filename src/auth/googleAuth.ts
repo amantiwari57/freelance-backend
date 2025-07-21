@@ -4,6 +4,7 @@ import User from "../../models/user/userModel";
 import { OAuth2Client } from "google-auth-library";
 import { verifyToken } from "../../helper/JwtHelpers/verifyToken";
 import { cors } from "hono/cors";
+import { generateAccessToken, generateRefreshToken, verifyAccessToken } from "../../helper/JwtHelpers/jwtHelper";
 
 
 const googleAuth = new Hono();
@@ -96,12 +97,14 @@ googleAuth.get("/auth/google/callback", async (c) => {
       await user.save();
     }
 
-    // Generate JWT
-    const token = await sign({ email: user.email, id: user._id }, process.env.JWT_SECRET!);
-    
+    // Generate access and refresh tokens
+    const accessToken = await generateAccessToken({ email: user.email, id: user._id });
+    const refreshToken = await generateRefreshToken({ email: user.email, id: user._id });
+
     return c.json({
       message: "Login successful",
-      token,
+      accessToken,
+      refreshToken,
       userType: user.userType,
       userId: user._id,
     }, 200);
@@ -123,7 +126,7 @@ googleAuth.post("/auth/google/set-profile", async (c) => {
 
     // Extract and verify token
     const token = authHeader.split(" ")[1];
-    const tokenVerification = await verifyToken(token);
+    const tokenVerification = await verifyAccessToken(token);
     if (tokenVerification.error) {
       return c.json({ error: tokenVerification.error }, 401);
     }

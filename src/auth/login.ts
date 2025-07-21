@@ -1,9 +1,9 @@
 import { Hono } from "hono";
-import { sign } from "hono/jwt";
 import { z } from "zod";
 import * as bcrypt from "bcryptjs";
 import { connectDB } from "../../helper/dbConnect";
 import User from "../../models/user/userModel";
+import { generateAccessToken, generateRefreshToken } from "../../helper/JwtHelpers/jwtHelper";
 
 const loginSchema = z.object({
   email: z.string().email(),
@@ -30,10 +30,18 @@ login.post("/auth/login", async (c) => {
       return c.json({ error: "Invalid email or password" }, 400);
     }
 
-    // 🔹 Generate JWT token
-    const token = await sign({ email: user.email, id: user._id }, process.env.JWT_SECRET!);
+    // 🔹 Generate access and refresh tokens
+    const accessToken = await generateAccessToken({ email: user.email, id: user._id });
+    const refreshToken = await generateRefreshToken({ email: user.email, id: user._id });
 
-    return c.json({ message: "Logged in successfully", token ,userType:user.userType,userId:user._id,user }, 201);
+    return c.json({
+      message: "Logged in successfully",
+      accessToken,
+      refreshToken,
+      userType: user.userType,
+      userId: user._id,
+      user
+    }, 201);
   } catch (error) {
     return c.json(
       { error: error instanceof Error ? error.message : "Invalid request" },
